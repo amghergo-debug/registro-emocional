@@ -25,6 +25,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Restore full app
         run: |
+          wc -c .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03
+          sha256sum .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03
           mkdir -p _site
           cat .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03 | tr -d '\n\r' | base64 --decode | gzip --decompress > _site/index.html
           touch _site/.nojekyll
