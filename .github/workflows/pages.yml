@@ -23,12 +23,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Restore full app
+        run: |
+          mkdir -p _site
+          cat .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03 | tr -d '\n\r' | base64 --decode | gzip --decompress > _site/index.html
+          touch _site/.nojekyll
+      - name: Verify restored app
+        run: |
+          grep -q "Narrativa interna" _site/index.html
+          grep -q "Objetivos y progreso" _site/index.html
+          grep -q "Perfil y privacidad" _site/index.html
+          grep -q "Panel profesional" _site/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
