@@ -25,17 +25,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Restore full app
         run: |
-          wc -c .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03
-          sha256sum .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03
+          wc -c .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03a .app/app.gz.b64.03b
+          sha256sum .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03a .app/app.gz.b64.03b
           mkdir -p _site
-          cat .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03 | tr -d '\n\r' | base64 --decode | gzip --decompress > _site/index.html
+          cat .app/app.gz.b64.01 .app/app.gz.b64.02 .app/app.gz.b64.03a .app/app.gz.b64.03b | tr -d '\n\r' | base64 --decode | gzip --decompress > _site/index.html
           touch _site/.nojekyll
       - name: Verify restored app
         run: |
+          test "$(wc -c < _site/index.html)" -eq 67197
           grep -q "Narrativa interna" _site/index.html
           grep -q "Objetivos y progreso" _site/index.html
           grep -q "Perfil y privacidad" _site/index.html
           grep -q "Panel profesional" _site/index.html
+          grep -q "register-user" _site/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
