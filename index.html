@@ -17,7 +17,7 @@
   <main class="loading"><div class="box"><h1>Registro emocional</h1><p>Lic. Marcela Ghergo</p><div class="dot"></div><div id="err" class="err">No pudimos iniciar la plataforma. Recargá la página en unos segundos.</div></div></main>
   <script>
   (async()=>{
-    const SOURCE='https://ftvnwjwttsfcosbbceun.supabase.co/functions/v1/registro-emocional-source';
+    const SOURCE='https://ftvnwjwttsfcosbbceun.supabase.co/functions/v1/registro-emocional-source-bg';
     const showError=(e)=>{console.error(e);const d=document.querySelector('.dot');if(d)d.style.display='none';const x=document.getElementById('err');if(x){x.style.display='block';x.textContent='No pudimos iniciar la plataforma. Recargá la página. Si continúa, avisale a Marcela.'}};
     const loadExternal=src=>new Promise((resolve,reject)=>{
       const candidates=[src];
