@@ -62,6 +62,84 @@
           document.body.appendChild(s);
         }
       }
+
+      // Auth bridge: password recovery + invitation/recovery callback handling.
+      const authScript=document.createElement('script');
+      authScript.textContent=`(async function(){
+        const SB_URL='https://ftvnwjwttsfcosbbceun.supabase.co';
+        const SB_KEY='sb_publishable_uN0VJecQBkYnrYFcndHFKg_uEW_Bqhk';
+        const APP_URL='https://amghergo-debug.github.io/registro-emocional/';
+        let client=null;
+        async function getClient(){
+          if(client)return client;
+          if(!window.supabase?.createClient){
+            await new Promise((resolve,reject)=>{
+              const s=document.createElement('script');
+              s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+              s.onload=resolve;s.onerror=reject;document.head.appendChild(s);
+            });
+          }
+          if(!window.supabase?.createClient)throw new Error('No se pudo cargar el cliente de autenticación');
+          client=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+          return client;
+        }
+        const visible=e=>!!e&&(!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length));
+        const inputs=()=>[...document.querySelectorAll('input')].filter(visible);
+        const emailInput=()=>inputs().find(e=>e.type==='email'||/email|correo/i.test((e.name||'')+' '+(e.placeholder||'')))||inputs().find(e=>/mail|correo/i.test((e.name||'')+' '+(e.placeholder||'')));
+        const passInput=()=>inputs().find(e=>e.type==='password'&&!/activation|new|confirm/i.test((e.id||'')+' '+(e.name||'')))||inputs().find(e=>e.type==='password');
+        function ensureForgot(){
+          if(document.querySelector('[data-password-recovery]'))return true;
+          const pass=passInput();if(!pass)return false;
+          const host=pass.closest('form')||pass.parentElement?.parentElement||pass.parentElement;if(!host)return false;
+          const b=document.createElement('button');b.type='button';b.dataset.passwordRecovery='1';b.textContent='¿Olvidaste tu contraseña?';
+          b.style.cssText='display:block;margin:10px 0 0 auto;background:none;border:0;padding:4px 0;color:#d9b76f;font:inherit;font-size:13px;cursor:pointer;text-decoration:underline;text-underline-offset:3px';
+          b.addEventListener('click',async()=>{
+            const email=emailInput()?.value?.trim().toLowerCase();
+            if(!email){const e=emailInput();if(e){e.focus();e.style.outline='2px solid #d9b76f';setTimeout(()=>e.style.outline='',1500)}alert('Ingresá tu email y después tocá “¿Olvidaste tu contraseña?”');return}
+            try{
+              const sb=await getClient();b.disabled=true;b.textContent='Enviando…';
+              const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:APP_URL});
+              b.disabled=false;b.textContent='¿Olvidaste tu contraseña?';
+              if(error){alert('No pudimos enviar el correo de recuperación. Intentá nuevamente.');console.error(error);return}
+              alert('Si el email corresponde a una cuenta, vas a recibir un enlace para restablecer la contraseña. Revisá también Spam.');
+            }catch(e){b.disabled=false;b.textContent='¿Olvidaste tu contraseña?';alert('No pudimos iniciar la recuperación. Recargá la página e intentá nuevamente.');console.error(e)}
+          });
+          host.appendChild(b);return true;
+        }
+        function addRecoveryModal(sb){
+          if(document.getElementById('recoveryModal'))return;
+          const wrap=document.createElement('div');wrap.id='recoveryModal';wrap.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.78);display:grid;place-items:center;padding:20px;z-index:2147483647"><div style="width:min(420px,100%);box-sizing:border-box;background:#10110f;border:1px solid rgba(217,183,111,.35);border-radius:18px;padding:24px;color:#f2eadc;box-shadow:0 20px 60px rgba(0,0,0,.55)"><h2 style="margin:0 0 8px;font:500 25px Georgia,serif">Crear nueva contraseña</h2><p style="margin:0 0 18px;color:#b8b0a4;line-height:1.5;font-size:14px">Elegí una nueva contraseña para volver a ingresar a tu cuenta.</p><label style="display:block;font-size:13px;margin-bottom:7px">Nueva contraseña</label><input id="recoveryNew" type="password" autocomplete="new-password" minlength="15" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #514a3e;background:#181915;color:#f2eadc;margin-bottom:12px"><label style="display:block;font-size:13px;margin-bottom:7px">Repetir contraseña</label><input id="recoveryConfirm" type="password" autocomplete="new-password" minlength="15" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #514a3e;background:#181915;color:#f2eadc;margin-bottom:8px"><div id="recoveryMsg" style="min-height:20px;color:#d9b76f;font-size:13px;margin-bottom:12px"></div><button id="recoverySave" type="button" style="width:100%;padding:13px 16px;border:0;border-radius:10px;background:#c7a365;color:#111;font-weight:700;cursor:pointer">Guardar nueva contraseña</button></div></div>';document.body.appendChild(wrap);
+          document.getElementById('recoverySave').onclick=async()=>{
+            const a=document.getElementById('recoveryNew').value,b=document.getElementById('recoveryConfirm').value,m=document.getElementById('recoveryMsg'),btn=document.getElementById('recoverySave');
+            if(a.length<15){m.textContent='La contraseña debe tener al menos 15 caracteres.';return}
+            if(a!==b){m.textContent='Las contraseñas no coinciden.';return}
+            btn.disabled=true;btn.textContent='Guardando…';m.textContent='';
+            const {error}=await sb.auth.updateUser({password:a});
+            if(error){btn.disabled=false;btn.textContent='Guardar nueva contraseña';m.textContent='No pudimos cambiar la contraseña. El enlace puede haber vencido. Solicitá uno nuevo.';console.error(error);return}
+            m.textContent='Contraseña actualizada correctamente.';setTimeout(()=>{history.replaceState({},document.title,location.pathname+location.search);location.reload()},1200);
+          };
+        }
+        async function handleAuthFragment(){
+          const p=new URLSearchParams(location.hash.replace(/^#/,''));
+          const type=p.get('type'),access=p.get('access_token'),refresh=p.get('refresh_token');
+          if(!type||!access||!refresh)return;
+          try{
+            const sb=await getClient();
+            const {error}=await sb.auth.setSession({access_token:access,refresh_token:refresh});
+            if(error){console.error('Auth bootstrap',error);return}
+            history.replaceState({},document.title,location.pathname+location.search);
+            if(type==='recovery')setTimeout(()=>addRecoveryModal(sb),500);
+            if(type==='invite')setTimeout(()=>location.reload(),150);
+          }catch(e){console.error('Auth bootstrap',e)}
+        }
+        function start(){
+          handleAuthFragment();ensureForgot();
+          const mo=new MutationObserver(()=>ensureForgot());mo.observe(document.body,{childList:true,subtree:true});
+          setTimeout(()=>mo.disconnect(),120000);
+        }
+        if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+      })().catch(console.error);`;
+      document.body.appendChild(authScript);
     }catch(e){showError(e)}
   })();
   </script>
